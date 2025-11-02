@@ -9,16 +9,6 @@ import os
 from datetime import datetime
 
 def convert_image_to_dicom(image_path: str, output_path: str = None) -> str:
-    """
-    Convert PNG or JPG image to DICOM format.
-    
-    Args:
-        image_path: Path to the input image file (PNG, JPG, JPEG)
-        output_path: Optional path for output DICOM file. If None, replaces extension with .dcm
-        
-    Returns:
-        Path to the created DICOM file
-    """
     if output_path is None:
         base_name = os.path.splitext(image_path)[0]
         output_path = f"{base_name}.dcm"

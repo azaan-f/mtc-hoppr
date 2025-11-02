@@ -1,7 +1,11 @@
 import argparse
 import asyncio
+import os
 from typing import Optional
+from dotenv import load_dotenv
 from hopprai import HOPPR
+
+load_dotenv()
 
 MODEL_ID_TO_FINDING = {
     "mc_chestradiography_air_space_opacity:v1.20250828": "Air Space Opacity",
@@ -32,7 +36,6 @@ MODEL_ID_TO_FINDING = {
 
 
 async def run_model(hoppr, study_id, model_id, prompt):
-    """Run a single Hoppr model and return a structured result."""
     def call_model():
         if model_id == "cxr-vlm-experimental":
             return hoppr.prompt_model(
@@ -186,8 +189,11 @@ def run_pipeline(
     dicom_path: str,
 ):
     
-    api_key = "RmTQz4CowITpnjNdBAFbvjRaMlyARl9g3WUWVIhu"
+    api_key = os.getenv("HOPPR_API_KEY", "RmTQz4CowITpnjNdBAFbvjRaMlyARl9g3WUWVIhu")
     base_url = "https://api.hoppr.ai"
+
+    if not api_key or api_key == "":
+        raise ValueError("HOPPR_API_KEY environment variable is required. Please set it in your .env file or environment.")
 
     hoppr = HOPPR(api_key=api_key, base_url=base_url)
 

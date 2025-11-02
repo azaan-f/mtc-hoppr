@@ -21,7 +21,6 @@ export interface ParsedGPTOutput {
   rawOutput: string
 }
 
-
 export function parsePipelineOutput(pipelineOutput: string): ParsedPipelineOutput {
   const result: ParsedPipelineOutput = {
     positiveFindings: [],
@@ -115,7 +114,6 @@ export function parsePipelineOutput(pipelineOutput: string): ParsedPipelineOutpu
   return result
 }
 
-
 export function parseGPTOutput(gptOutput: string): ParsedGPTOutput {
   const result: ParsedGPTOutput = {
     summary: "",
@@ -172,8 +170,6 @@ export function parseGPTOutput(gptOutput: string): ParsedGPTOutput {
     console.log("JSON parsing failed, falling back to text parsing:", e)
   }
 
-
-
   let cleanGptOutput = gptOutput
 
   cleanGptOutput = cleanGptOutput.replace(/### (Stepwise Reasoning|Comparing|Synthesis|Review of Input Data).*?(?=### Patient-Friendly|### |$)/gis, '')
@@ -188,11 +184,9 @@ export function parseGPTOutput(gptOutput: string): ParsedGPTOutput {
 
   cleanGptOutput = cleanGptOutput.replace(/.*[Nn]arrative and summary support.*(?=\n\n|$)/g, '')
 
-
   const explanationMatch = cleanGptOutput.match(/### Patient-Friendly Explanation and Next Steps\s*\n\n(.*?)(?=\*\*Next steps:\*\*|\*\*Next Steps:\*\*|##|$)/is)
   if (explanationMatch) {
     let explanation = explanationMatch[1].trim()
-
 
     const parts = explanation.split(/What to do next:/i)
     explanation = parts[0].trim()
@@ -246,7 +240,6 @@ export function parseGPTOutput(gptOutput: string): ParsedGPTOutput {
         explanation = explanation.replace(/^\*\*:.*$/gm, '')
         result.explanation = explanation.replace(/\*\*/g, "").trim()
       } else {
-
 
         const allParagraphs = cleanGptOutput.split(/\n\n+/)
         const patientFriendlyParagraphs: string[] = []
@@ -380,7 +373,7 @@ export function parseGPTOutput(gptOutput: string): ParsedGPTOutput {
 
         cleaned = cleaned.replace(/\(\d+\.\d+\):\s*/g, '')
 
-        cleaned = cleaned.replace(/â€”[^â€”]+$/g, '').trim()
+        cleaned = cleaned.replace(/Ã¢â‚¬â€[^Ã¢â‚¬â€]+$/g, '').trim()
 
         cleaned = cleaned.replace(/\([^)]*\)$/g, '').trim()
         return cleaned
@@ -410,7 +403,7 @@ export function parseGPTOutput(gptOutput: string): ParsedGPTOutput {
           let cleaned = f.trim().replace(/\*\*/g, "")
 
           cleaned = cleaned.replace(/\(\d+\.\d+\):\s*/g, '')
-          cleaned = cleaned.replace(/â€”[^â€”]+$/g, '').trim()
+          cleaned = cleaned.replace(/Ã¢â‚¬â€[^Ã¢â‚¬â€]+$/g, '').trim()
           return cleaned
         })
         .filter((f) => {
@@ -426,7 +419,6 @@ export function parseGPTOutput(gptOutput: string): ParsedGPTOutput {
         .slice(0, 4)
     } else {
 
-
       result.keyFindings = []
     }
   }
@@ -435,8 +427,8 @@ export function parseGPTOutput(gptOutput: string): ParsedGPTOutput {
 
     let cleaned = f.replace(/\(\d+\.\d+\):\s*/g, '')
 
-    cleaned = cleaned.replace(/â€”[^â€”]+$/g, '').trim()
-    cleaned = cleaned.replace(/â€”.*$/g, '').trim()
+    cleaned = cleaned.replace(/Ã¢â‚¬â€[^Ã¢â‚¬â€]+$/g, '').trim()
+    cleaned = cleaned.replace(/Ã¢â‚¬â€.*$/g, '').trim()
 
     if (cleaned.length > 0 && cleaned[0] === cleaned[0].toLowerCase()) {
       cleaned = cleaned[0].toUpperCase() + cleaned.slice(1)
@@ -487,7 +479,6 @@ export function parseGPTOutput(gptOutput: string): ParsedGPTOutput {
 
   return result
 }
-
 
 export function determineSeverityFromPipeline(parsed: ParsedPipelineOutput): "normal" | "mild" | "moderate" | "severe" | "critical" {
   const positiveCount = parsed.positiveFindings.length

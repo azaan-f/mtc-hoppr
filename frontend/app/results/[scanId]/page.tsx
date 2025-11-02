@@ -97,7 +97,6 @@ export default function IntakePage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-
   }
 
   const formatQuestionnaireData = () => {

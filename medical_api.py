@@ -5,8 +5,11 @@ import sys
 import traceback
 import json
 from datetime import datetime
+from dotenv import load_dotenv
 from pipeline import run_pipeline
 from gptapi import main as gpt_main
+
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
@@ -23,7 +26,6 @@ else:
 print(f"{'='*50}\n")
 
 def get_mock_pipeline_analysis(filepath):
-    """Return mock pipeline analysis for demo purposes"""
     return f"""
 DICOM File Analysis Report
 ==========================
@@ -65,7 +67,6 @@ Note: This is a demonstration analysis for testing purposes.
 """
 
 def get_mock_gpt_analysis():
-    """Return mock GPT analysis for demo purposes"""
     return """
 Based on the medical imaging analysis provided, here is a patient-friendly interpretation:
 
@@ -92,12 +93,10 @@ Note: This is a demonstration analysis for testing purposes.
 
 @app.route('/health', methods=['GET'])
 def health_check():
-    """Simple health check endpoint"""
     return jsonify({'status': 'healthy', 'service': 'medical_api'})
 
 @app.route('/analyze/pipeline', methods=['POST'])
 def analyze_pipeline():
-    """Run pipeline analysis on uploaded DICOM file"""
     try:
         data = request.json
         if not data or 'filepath' not in data:
@@ -138,7 +137,6 @@ def analyze_pipeline():
 
 @app.route('/analyze/gpt', methods=['POST'])
 def analyze_gpt():
-    """Run GPT analysis on pipeline output"""
     try:
         data = request.json
         if not data or 'pipeline_output' not in data:
@@ -172,7 +170,6 @@ def analyze_gpt():
 
 @app.route('/analyze/complete', methods=['POST'])
 def analyze_complete():
-    """Run both pipeline and GPT analysis in one request"""
     try:
         data = request.json
         if not data or 'filepath' not in data:

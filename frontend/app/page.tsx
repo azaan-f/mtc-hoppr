@@ -203,7 +203,7 @@ export default function HomePage() {
 
       <footer className="border-t border-purple-100 py-8">
         <div className="container mx-auto px-6 text-center text-sm text-gray-500">
-          <p>Â© 2025 clario. For informational purposes only. Not a substitute for professional medical advice.</p>
+          <p>Ã‚Â© 2025 clario. For informational purposes only. Not a substitute for professional medical advice.</p>
         </div>
       </footer>
     </div>

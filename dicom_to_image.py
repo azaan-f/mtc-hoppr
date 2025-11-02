@@ -6,16 +6,6 @@ import sys
 import os
 
 def dicom_to_png(dicom_path: str, output_path: str = None) -> str:
-    """
-    Convert DICOM file to PNG image for display.
-    
-    Args:
-        dicom_path: Path to the DICOM file
-        output_path: Optional path for output PNG file
-        
-    Returns:
-        Path to the created PNG file
-    """
     if not os.path.exists(dicom_path):
         raise FileNotFoundError(f"DICOM file not found: {dicom_path}")
     

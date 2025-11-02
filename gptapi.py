@@ -11,7 +11,6 @@ except ImportError:
     pass
 
 def _extract_response_text(resp) -> str:
-    """Try common spots in the Responses API object/dict to get plain text."""
     try:
         out = getattr(resp, "output", None)
         if out:

@@ -21,7 +21,6 @@ export interface QuestionnaireData {
   currentSymptoms: string[]
 }
 
-
 export const getQuestionnaireData = (): QuestionnaireData | null => {
   if (typeof window === 'undefined') return null
   
@@ -29,13 +28,11 @@ export const getQuestionnaireData = (): QuestionnaireData | null => {
   return storedData ? JSON.parse(storedData) : null
 }
 
-
 export const getFormattedQuestionnaireData = (): string => {
   if (typeof window === 'undefined') return ""
   
   return localStorage.getItem('questionnaireFormatted') || ""
 }
-
 
 export const generateChatGPTContext = (data?: QuestionnaireData): string => {
   const questionnaireData = data || getQuestionnaireData()
@@ -73,14 +70,12 @@ Patient is a ${questionnaireData.personalInformation.gender} presenting with ${q
   return formattedString
 }
 
-
 export const clearQuestionnaireData = (): void => {
   if (typeof window === 'undefined') return
   
   localStorage.removeItem('questionnaireData')
   localStorage.removeItem('questionnaireFormatted')
 }
-
 
 export const saveQuestionnaireData = (data: QuestionnaireData): void => {
   if (typeof window === 'undefined') return

@@ -168,7 +168,6 @@ export default function ResultsPage() {
       setQuestionnaireData(JSON.parse(storedData))
     }
 
-
     if (storedAnalysis && currentFilePath) {
       const parsed = JSON.parse(storedAnalysis)
 
@@ -246,7 +245,6 @@ export default function ResultsPage() {
           findingSummary = `${significantFindings.length} abnormalities detected, including ${topFinding.name}`
         }
       }
-
 
       let confidenceScore = 85.0
       if (significantFindings.length > 0) {

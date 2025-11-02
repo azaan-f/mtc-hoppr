@@ -29,6 +29,7 @@
 - **TypeScript** - Type-safe development
 - **Tailwind CSS** - Modern styling
 - **jsPDF** - Client-side PDF generation
+- **Framer Motion** - Scroll animations and transitions
 
 ---
 
@@ -50,7 +51,7 @@ Before running the application, ensure you have:
 
 3. **API Keys** (Optional for demo mode):
    - OpenAI API key (for GPT explanations)
-   - Hoppr AI API key (hardcoded in pipeline.py for demo purposes)
+   - Hoppr AI API key (can be set in `.env` file)
 
 ---
 
@@ -83,6 +84,9 @@ DEMO_MODE=false
 
 # Optional: OpenAI API key for GPT explanations
 OPENAI_API_KEY=your_openai_api_key_here
+
+# Optional: Hoppr AI API key for medical imaging analysis
+HOPPR_API_KEY=your_hoppr_api_key_here
 ```
 
 **Note**: The application can run in **DEMO_MODE** without API keys for testing purposes.
@@ -147,6 +151,7 @@ The frontend will start on `http://localhost:3000`.
 ### 1. **Upload Scan**
    - Navigate to the upload page
    - Select a DICOM file (`.dcm`), PNG, or JPG image
+   - PNG/JPG images are automatically converted to DICOM format
    - File is uploaded and pipeline analysis begins
 
 ### 2. **Complete Questionnaire**
@@ -157,6 +162,7 @@ The frontend will start on `http://localhost:3000`.
 ### 3. **View Results**
    - Wait for AI analysis to complete (1-2 minutes)
    - Review findings with:
+     - **Image preview** of your uploaded scan
      - Severity indicator (normal, mild, moderate, severe, critical)
      - Confidence score visualization
      - Patient-friendly explanation
@@ -176,21 +182,30 @@ mtchacks/
 │   │   ├── api/             # API routes
 │   │   │   ├── upload/      # File upload handler
 │   │   │   ├── analyze/     # GPT analysis proxy
-│   │   │   └── status/      # Pipeline status checker
+│   │   │   ├── status/      # Pipeline status checker
+│   │   │   ├── image/       # Image preview handler
+│   │   │   └── generate-pdf/ # PDF generation (legacy)
 │   │   ├── intake/          # Questionnaire page
 │   │   ├── results/         # Results display page
 │   │   └── upload/          # File upload page
 │   ├── components/          # React components
 │   │   ├── ui/              # UI component library
-│   │   └── confidence-gauge.tsx
+│   │   ├── confidence-gauge.tsx
+│   │   └── animate-on-scroll.tsx # Scroll animations
 │   ├── lib/                 # Utility libraries
 │   │   ├── analysis-parser.ts    # Parse AI outputs
-│   │   └── pdf-generator.ts      # PDF report generation
+│   │   ├── pdf-generator.ts      # PDF report generation
+│   │   ├── questionnaire-utils.ts # Questionnaire formatting
+│   │   └── utils.ts             # General utilities
+│   ├── public/              # Static assets (logos, images)
+│   ├── templates/           # HTML templates (PDF generation)
 │   └── package.json
 │
 ├── medical_api.py           # Flask REST API server
 ├── pipeline.py              # Hoppr AI pipeline orchestrator
 ├── gptapi.py                # OpenAI GPT integration
+├── image_to_dicom.py        # Convert PNG/JPG to DICOM format
+├── dicom_to_image.py        # Convert DICOM to PNG for preview
 ├── requirements.txt         # Python dependencies
 └── README.md               # This file
 ```
@@ -247,13 +262,28 @@ Content-Type: application/json
 POST http://localhost:3000/api/upload
 Content-Type: multipart/form-data
 
-file: <DICOM file>
+file: <DICOM, PNG, or JPG file>
 ```
 
 #### Check Analysis Status
 ```http
 GET http://localhost:3000/api/status?analysisId=<analysis_id>
 ```
+
+#### Get Image Preview
+```http
+GET http://localhost:3000/api/image?path=<file_path>
+```
+
+#### Generate PDF (Legacy endpoint)
+```http
+POST http://localhost:3000/api/generate-pdf
+Content-Type: application/json
+
+{ "analysisData": { ... } }
+```
+
+Note: PDF generation is primarily handled client-side using jsPDF.
 
 ---
 
@@ -297,24 +327,17 @@ WARNING: Running in DEMO MODE - using mock data!
 |----------|----------|---------|-------------|
 | `DEMO_MODE` | No | `false` | Enable mock data mode |
 | `OPENAI_API_KEY` | No* | - | OpenAI API key for GPT explanations |
-| `HOPPR_API_KEY` | No* | - | Hoppr AI API key (currently hardcoded in `pipeline.py`) |
+| `HOPPR_API_KEY` | No* | - | Hoppr AI API key (can be set in `.env` file) |
 
 *Required only when `DEMO_MODE=false`
 
 ### Sample DICOM Files
 
-A sample DICOM file is included for testing:
-- `Atelectasis/train/0b1b897b1e1e170f1b5fd7aeff553afa.dcm`
+For testing, you can use any valid DICOM file (`.dcm`), PNG, or JPG image. The application will automatically convert PNG/JPG images to DICOM format for analysis.
 
 ---
 
 ## 🧪 Testing
-
-### Test Backend API
-
-```bash
-python test_medical_api.py
-```
 
 ### Manual Testing Flow
 
@@ -354,9 +377,14 @@ pip install --upgrade pip
 pip install -r requirements.txt --no-cache-dir
 ```
 
+**Image conversion failing:**
+- Ensure `pydicom`, `Pillow`, and `numpy` are installed
+- Check that the uploaded image file is valid (PNG, JPG, or JPEG)
+- Verify write permissions in the `uploads/` directory
+
 **Hoppr AI API errors:**
 - Enable DEMO_MODE for testing
-- Check API key in `pipeline.py` (line 199)
+- Check API key in `.env` file (`HOPPR_API_KEY` environment variable)
 - Verify network connectivity
 
 ### Frontend Issues
@@ -433,6 +461,16 @@ npm run dev
    - Includes all key findings and recommendations
    - Uses jsPDF for client-side generation
 
+### 5. **Image Conversion** (`image_to_dicom.py`, `dicom_to_image.py`)
+   - Converts PNG/JPG images to DICOM format for Hoppr AI analysis
+   - Converts DICOM files to PNG for browser preview
+   - Maintains image quality and metadata during conversion
+
+### 6. **Image Preview** (`frontend/app/api/image/route.ts`)
+   - Serves uploaded images for display on results page
+   - Handles both original images and DICOM-to-PNG conversions
+   - Implements caching for performance
+
 ---
 
 ## 🏗 Architecture Overview
@@ -487,8 +525,7 @@ python medical_api.py
 
 ### Sample Test Data
 
-Use the included DICOM file for testing:
-- Path: `Atelectasis/train/0b1b897b1e1e170f1b5fd7aeff553afa.dcm`
+For testing, you can use any valid DICOM file (`.dcm`), PNG, or JPG image. The application supports multiple image formats and will automatically convert them to DICOM format for analysis.
 
 ### Key Features to Highlight
 
@@ -497,6 +534,10 @@ Use the included DICOM file for testing:
 3. **Professional Output**: Download a formatted PDF report
 4. **Confidence Visualization**: Understand AI analysis reliability
 5. **Patient-Friendly Language**: Compare technical findings to plain-language explanations
+6. **Image Support**: Upload PNG/JPG images - automatically converted to DICOM
+7. **Image Preview**: View your scan image alongside the analysis results
+8. **Smooth Animations**: Scroll-triggered animations on the home page
+9. **Modern UI**: Professional design with purple theme and smooth transitions
 
 ### Performance Expectations
 

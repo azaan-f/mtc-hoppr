@@ -47,7 +47,7 @@ Before running the application, ensure you have:
    pip --version
    ```
 
-3. **API Keys** (Optional for demo mode):
+3. **API Keys**:
    - OpenAI API key (for GPT explanations)
    - Hoppr AI API key (can be set in `.env` file)
 
@@ -84,8 +84,6 @@ OPENAI_API_KEY=your_openai_api_key_here
 # Optional: Hoppr AI API key for medical imaging analysis
 HOPPR_API_KEY=your_hoppr_api_key_here
 ```
-
-**Note**: The application can run in **DEMO_MODE** without API keys for testing purposes.
 
 #### Start the Flask API Server
 
@@ -282,38 +280,6 @@ Note: PDF generation is primarily handled client-side using jsPDF.
 
 ---
 
-## Demo Mode
-
-The application supports a **DEMO_MODE** for testing without API keys:
-
-### Enable Demo Mode
-
-Set the environment variable:
-```bash
-export DEMO_MODE=true
-# OR on Windows:
-set DEMO_MODE=true
-```
-
-Or create a `.env` file:
-```
-DEMO_MODE=true
-```
-
-When enabled:
-- ✅ Uses mock pipeline analysis (no Hoppr API calls)
-- ✅ Uses mock GPT analysis (no OpenAI API calls)
-- ✅ All features work identically to production mode
-- ✅ Perfect for demonstrations and testing
-
-**Status is displayed on server startup**:
-```
-DEMO_MODE Status: True
-WARNING: Running in DEMO MODE - using mock data!
-```
-
----
-
 ## Configuration
 
 ### Environment Variables
@@ -323,7 +289,6 @@ WARNING: Running in DEMO MODE - using mock data!
 | `OPENAI_API_KEY` | No* | - | OpenAI API key for GPT explanations |
 | `HOPPR_API_KEY` | No* | - | Hoppr AI API key (can be set in `.env` file) |
 
-*Required only when `DEMO_MODE=false`
 
 ### Sample DICOM Files
 
@@ -377,7 +342,6 @@ pip install -r requirements.txt --no-cache-dir
 - Verify write permissions in the `uploads/` directory
 
 **Hoppr AI API errors:**
-- Enable DEMO_MODE for testing
 - Check API key in `.env` file (`HOPPR_API_KEY` environment variable)
 - Verify network connectivity
 

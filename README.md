@@ -77,8 +77,6 @@ pip install -r requirements.txt
 Create a `.env` file in the root directory:
 
 ```bash
-# Optional: Set to 'true' to use mock data instead of real API calls
-DEMO_MODE=false
 
 # Optional: OpenAI API key for GPT explanations
 OPENAI_API_KEY=your_openai_api_key_here
@@ -101,7 +99,6 @@ The server will start on `http://localhost:8000`. You should see:
 
 ```
 ==================================================
-DEMO_MODE Status: False
 Running with REAL medical imaging analysis
 clario medical imaging analysis and GPT APIs will be called with actual data
 ==================================================

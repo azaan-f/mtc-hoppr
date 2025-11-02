@@ -1,22 +1,22 @@
 # clario - AI-Powered Radiology Analysis Platform
 
-## 🏆 Hackathon Project Overview
+## Hackathon Project Overview
 
 **clario** is an intelligent medical imaging analysis platform that transforms complex radiology scans into clear, patient-friendly reports. Built for healthcare accessibility, clario uses advanced AI models to analyze chest X-rays, CT scans, and MRIs, providing instant, understandable results with actionable next steps.
 
 ### Key Features
 
-- **🔬 Advanced AI Analysis**: Leverages Hoppr AI medical imaging models with tiered inference for comprehensive scan analysis
-- **📝 Patient-Friendly Reports**: GPT-powered explanations that translate medical jargon into plain language
-- **📊 Real-time Confidence Scoring**: Visual confidence gauges showing AI analysis reliability
-- **📋 Personalized Recommendations**: Context-aware next steps based on questionnaire data and findings
-- **📄 Professional PDF Reports**: Downloadable, formatted reports for patient records
-- **🎯 Structured Findings Display**: Clear categorization of detected abnormalities and ruled-out conditions
-- **⚡ Fast Processing**: Asynchronous pipeline execution with real-time progress tracking
+- ** Advanced AI Analysis**: Leverages Hoppr AI medical imaging models with tiered inference for comprehensive scan analysis
+- ** Patient-Friendly Reports**: GPT-powered explanations that translate medical jargon into plain language
+- ** Real-time Confidence Scoring**: Visual confidence gauges showing AI analysis reliability
+- ** Personalized Recommendations**: Context-aware next steps based on questionnaire data and findings
+- ** Professional PDF Reports**: Downloadable, formatted reports for patient records
+- ** Structured Findings Display**: Clear categorization of detected abnormalities and ruled-out conditions
+- ** Fast Processing**: Asynchronous pipeline execution with real-time progress tracking
 
 ---
 
-## 🛠 Technology Stack
+## Technology Stack
 
 ### Backend
 - **Python 3.8+** - Core language
@@ -33,7 +33,7 @@
 
 ---
 
-## 📋 Prerequisites
+## Prerequisites
 
 Before running the application, ensure you have:
 
@@ -55,7 +55,7 @@ Before running the application, ensure you have:
 
 ---
 
-## 🚀 Quick Start Guide
+## Quick Start Guide
 
 ### 1. Clone the Repository
 
@@ -66,7 +66,7 @@ cd mtchacks
 
 ### 2. Backend Setup
 
-> ⚠️ **IMPORTANT**: The Flask backend server MUST be running for the application to work. The frontend will show an error if it cannot connect to `http://localhost:8000`.
+> **IMPORTANT**: The Flask backend server MUST be running for the application to work. The frontend will show an error if it cannot connect to `http://localhost:8000`.
 
 #### Install Python Dependencies
 
@@ -97,7 +97,7 @@ HOPPR_API_KEY=your_hoppr_api_key_here
 python medical_api.py
 ```
 
-> 🔴 **CRITICAL**: Keep this terminal window open! The server must remain running for the frontend to work.
+> **CRITICAL**: Keep this terminal window open! The server must remain running for the frontend to work.
 
 The server will start on `http://localhost:8000`. You should see:
 
@@ -146,7 +146,7 @@ The frontend will start on `http://localhost:3000`.
 
 ---
 
-## 🎯 Usage Flow
+## Usage Flow
 
 ### 1. **Upload Scan**
    - Navigate to the upload page
@@ -173,7 +173,7 @@ The frontend will start on `http://localhost:3000`.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 mtchacks/
@@ -212,7 +212,7 @@ mtchacks/
 
 ---
 
-## 🔌 API Endpoints
+## API Endpoints
 
 ### Backend (Flask - Port 8000)
 
@@ -287,7 +287,7 @@ Note: PDF generation is primarily handled client-side using jsPDF.
 
 ---
 
-## 🎭 Demo Mode
+## Demo Mode
 
 The application supports a **DEMO_MODE** for testing without API keys:
 
@@ -319,13 +319,12 @@ WARNING: Running in DEMO MODE - using mock data!
 
 ---
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `DEMO_MODE` | No | `false` | Enable mock data mode |
 | `OPENAI_API_KEY` | No* | - | OpenAI API key for GPT explanations |
 | `HOPPR_API_KEY` | No* | - | Hoppr AI API key (can be set in `.env` file) |
 
@@ -337,7 +336,7 @@ For testing, you can use any valid DICOM file (`.dcm`), PNG, or JPG image. The a
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ### Manual Testing Flow
 
@@ -350,7 +349,7 @@ For testing, you can use any valid DICOM file (`.dcm`), PNG, or JPG image. The a
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Backend Issues
 
@@ -433,7 +432,7 @@ npm run dev
 
 ---
 
-## 📊 How It Works
+## How It Works
 
 ### 1. **Pipeline Analysis** (`pipeline.py`)
    - Uploads DICOM file to Hoppr AI
@@ -473,7 +472,7 @@ npm run dev
 
 ---
 
-## 🏗 Architecture Overview
+## Architecture Overview
 
 ```
 ┌─────────────┐
@@ -512,21 +511,6 @@ npm run dev
 
 ---
 
-## 📝 Notes for Judges
-
-### Demo Mode Recommended
-
-For the hackathon demonstration, we recommend using **DEMO_MODE** to avoid API rate limits and ensure consistent results:
-
-```bash
-export DEMO_MODE=true
-python medical_api.py
-```
-
-### Sample Test Data
-
-For testing, you can use any valid DICOM file (`.dcm`), PNG, or JPG image. The application supports multiple image formats and will automatically convert them to DICOM format for analysis.
-
 ### Key Features to Highlight
 
 1. **Real-time Processing**: Watch the progress bar during analysis
@@ -548,7 +532,7 @@ For testing, you can use any valid DICOM file (`.dcm`), PNG, or JPG image. The a
 
 ---
 
-## 🎓 Learning Resources
+## Learning Resources
 
 ### Understanding the Code
 
@@ -558,32 +542,8 @@ For testing, you can use any valid DICOM file (`.dcm`), PNG, or JPG image. The a
 - **`frontend/lib/analysis-parser.ts`**: Output parsing and structuring
 - **`frontend/lib/pdf-generator.ts`**: Report generation
 
-### API Documentation
-
-- **Hoppr AI**: Medical imaging models for chest X-ray analysis
-- **OpenAI Responses API**: Structured GPT output generation
-
----
-
-## 📄 License
-
-This project is developed for hackathon demonstration purposes.
-
----
-
-## 👥 Contact & Support
-
-For questions or issues during the hackathon:
-1. Check this README's troubleshooting section
-2. Review console logs (both backend and frontend)
-3. Ensure all prerequisites are met
-4. Try enabling DEMO_MODE if API issues occur
-
----
-
-## ✨ Thank You!
+## Thank You!
 
 Thank you for reviewing clario! We hope you find the platform innovative and impactful for making medical imaging analysis more accessible to patients.
 
-**Happy Hacking! 🚀**
 

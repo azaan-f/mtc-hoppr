@@ -28,8 +28,6 @@
 - **Next.js 16** - React framework
 - **TypeScript** - Type-safe development
 - **Tailwind CSS** - Modern styling
-- **jsPDF** - Client-side PDF generation
-- **Framer Motion** - Scroll animations and transitions
 
 ---
 

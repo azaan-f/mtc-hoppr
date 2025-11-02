@@ -286,8 +286,8 @@ Note: PDF generation is primarily handled client-side using jsPDF.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `OPENAI_API_KEY` | No* | - | OpenAI API key for GPT explanations |
-| `HOPPR_API_KEY` | No* | - | Hoppr AI API key (can be set in `.env` file) |
+| `OPENAI_API_KEY` | Yes* | - | OpenAI API key for GPT explanations |
+| `HOPPR_API_KEY` | Yes* | - | Hoppr AI API key (can be set in `.env` file) |
 
 
 ### Sample DICOM Files

@@ -6,13 +6,13 @@
 
 ### Key Features
 
-- ** Advanced AI Analysis**: Leverages Hoppr AI medical imaging models with tiered inference for comprehensive scan analysis
-- ** Patient-Friendly Reports**: GPT-powered explanations that translate medical jargon into plain language
-- ** Real-time Confidence Scoring**: Visual confidence gauges showing AI analysis reliability
-- ** Personalized Recommendations**: Context-aware next steps based on questionnaire data and findings
-- ** Professional PDF Reports**: Downloadable, formatted reports for patient records
-- ** Structured Findings Display**: Clear categorization of detected abnormalities and ruled-out conditions
-- ** Fast Processing**: Asynchronous pipeline execution with real-time progress tracking
+- **Advanced AI Analysis**: Leverages Hoppr AI medical imaging models with tiered inference for comprehensive scan analysis
+- **Patient-Friendly Reports**: GPT-powered explanations that translate medical jargon into plain language
+- **Real-time Confidence Scoring**: Visual confidence gauges showing AI analysis reliability
+- **Personalized Recommendations**: Context-aware next steps based on questionnaire data and findings
+- **Professional PDF Reports**: Downloadable, formatted reports for patient records
+- **Structured Findings Display**: Clear categorization of detected abnormalities and ruled-out conditions
+- **Fast Processing**: Asynchronous pipeline execution with real-time progress tracking
 
 ---
 

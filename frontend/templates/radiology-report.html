@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radiology Report</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 30px;
+    background-color: #f8f9fa;
+  }
+  h1, h2 {
+    text-align: center;
+    margin-bottom: 5px;
+  }
+  h1 {
+    font-size: 28px;
+    text-transform: uppercase;
+  }
+  h2 {
+    font-size: 16px;
+    color: #555;
+  }
+  form {
+    background-color: #fff;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 0 5px rgba(0,0,0,0.1);
+  }
+  fieldset {
+    border: 1px solid #ccc;
+    margin-bottom: 20px;
+    padding: 15px;
+    border-radius: 8px;
+  }
+  legend {
+    font-weight: bold;
+    font-size: 16px;
+    padding: 0 10px;
+  }
+  label {
+    display: block;
+    margin-top: 10px;
+    font-weight: bold;
+  }
+  input[type="text"],
+  input[type="date"],
+  textarea {
+    width: 100%;
+    padding: 8px;
+    margin-top: 4px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 14px;
+  }
+  textarea {
+    height: 80px;
+    resize: vertical;
+  }
+  .two-col {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  .signature {
+    height: 50px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Radiology Report</h1>
+<h2>X-Ray | CT-Scan | MRI | USG</h2>
+
+<form>
+  <fieldset>
+    <legend>Patient Information</legend>
+    <div class="two-col">
+      <div>
+        <label for="name">Name</label>
+        <input type="text" id="name" value="{{name}}">
+      </div>
+      <div>
+        <label for="dob">Date of Birth</label>
+        <input type="date" id="dob" value="{{dob}}">
+      </div>
+      <div>
+        <label for="gender">Gender</label>
+        <input type="text" id="gender" value="{{gender}}">
+      </div>
+      <div>
+        <label for="patientid">Patient ID</label>
+        <input type="text" id="patientid" value="{{patientid}}">
+      </div>
+      <div>
+        <label for="physician">Referring Physician</label>
+        <input type="text" id="physician" value="{{physician}}">
+      </div>
+      <div>
+        <label for="examdate">Exam Date</label>
+        <input type="date" id="examdate" value="{{examdate}}">
+      </div>
+      <div>
+        <label for="examtype">Exam Type</label>
+        <input type="text" id="examtype" value="{{examtype}}">
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Clinical History</legend>
+    <textarea id="history">{{history}}</textarea>
+  </fieldset>
+
+  <fieldset>
+    <legend>Technique</legend>
+    <textarea id="technique">{{technique}}</textarea>
+  </fieldset>
+
+  <fieldset>
+    <legend>Findings</legend>
+    <textarea id="findings">{{findings}}</textarea>
+  </fieldset>
+
+  <fieldset>
+    <legend>Impression</legend>
+    <textarea id="impression">{{impression}}</textarea>
+  </fieldset>
+
+  <fieldset>
+    <legend>Recommendations</legend>
+    <textarea id="recommendations">{{recommendations}}</textarea>
+  </fieldset>
+
+  <fieldset>
+    <legend>Radiologist Information</legend>
+    <div class="two-col">
+      <div>
+        <label for="radiologist">Radiologist</label>
+        <input type="text" id="radiologist" value="{{radiologist}}">
+      </div>
+      <div>
+        <label for="specialty">Specialty</label>
+        <input type="text" id="specialty" value="{{specialty}}">
+      </div>
+      <div>
+        <label for="license">License No.</label>
+        <input type="text" id="license" value="{{license}}">
+      </div>
+      <div>
+        <label for="reportdate">Report Date</label>
+        <input type="date" id="reportdate" value="{{reportdate}}">
+      </div>
+      <div>
+        <label for="signature">Digital Signature</label>
+        <textarea id="signature" class="signature">{{signature}}</textarea>
+      </div>
+    </div>
+  </fieldset>
+</form>
+
+</body>
+</html>

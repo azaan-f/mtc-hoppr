@@ -5,6 +5,9 @@ interface ConfidenceGaugeProps {
 }
 
 export default function ConfidenceGauge({ score }: ConfidenceGaugeProps) {
+
+  const clampedScore = Math.max(0, Math.min(100, score))
+  
   const getColor = (score: number) => {
     if (score >= 90) return "text-primary"
     if (score >= 75) return "text-primary/80"
@@ -28,11 +31,11 @@ export default function ConfidenceGauge({ score }: ConfidenceGaugeProps) {
 
   return (
     <div className="space-y-6">
-      {/* Circular Gauge */}
+      {}
       <div className="flex items-center justify-center">
         <div className="relative">
           <svg className="transform -rotate-90" width="220" height="220">
-            {/* Background circle */}
+            {}
             <circle
               cx="110"
               cy="110"
@@ -42,7 +45,7 @@ export default function ConfidenceGauge({ score }: ConfidenceGaugeProps) {
               fill="none"
               className="text-border"
             />
-            {/* Progress circle */}
+            {}
             <circle
               cx="110"
               cy="110"
@@ -51,33 +54,33 @@ export default function ConfidenceGauge({ score }: ConfidenceGaugeProps) {
               strokeWidth="14"
               fill="none"
               strokeDasharray={`${2 * Math.PI * 90}`}
-              strokeDashoffset={`${2 * Math.PI * 90 * (1 - score / 100)}`}
-              className={getBackgroundColor(score).replace("bg-", "text-")}
+              strokeDashoffset={`${2 * Math.PI * 90 * (1 - clampedScore / 100)}`}
+              className={getBackgroundColor(clampedScore).replace("bg-", "text-")}
               strokeLinecap="round"
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className={`text-5xl font-bold ${getColor(score)}`}>{score.toFixed(1)}%</span>
+            <span className={`text-3xl font-bold ${getColor(clampedScore)}`}>{clampedScore.toFixed(1)}%</span>
             <span className="text-sm text-muted-foreground mt-2">Confidence</span>
           </div>
         </div>
       </div>
 
-      {/* Label and Bar */}
+      {}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-base font-medium text-foreground">{getLabel(score)}</span>
-          <span className="text-sm text-muted-foreground">{score.toFixed(1)}%</span>
+          <span className="text-base font-medium text-foreground">{getLabel(clampedScore)}</span>
+          <span className="text-sm text-muted-foreground">{clampedScore.toFixed(1)}%</span>
         </div>
         <div className="w-full bg-border rounded-full h-3 overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${getBackgroundColor(score)}`}
-            style={{ width: `${score}%` }}
+            className={`h-full rounded-full transition-all duration-500 ${getBackgroundColor(clampedScore)}`}
+            style={{ width: `${clampedScore}%` }}
           />
         </div>
       </div>
 
-      {/* Confidence Scale Reference */}
+      {}
       <div className="grid grid-cols-4 gap-3 text-xs text-center mt-6">
         <div className="space-y-2">
           <div className="h-2 bg-primary/40 rounded" />

@@ -42,7 +42,6 @@ export default function UploadPage() {
     setIsUploading(true)
     
     try {
-      // Upload the file
       const formData = new FormData()
       formData.append('file', selectedFile)
       
@@ -58,13 +57,16 @@ export default function UploadPage() {
       const uploadData = await uploadResponse.json()
       console.log('File uploaded and pipeline started:', uploadData)
       
-      // Store file path and analysis ID for later use
+      localStorage.removeItem('analysisResults')
+      
       setUploadedFilePath(uploadData.filepath)
       localStorage.setItem('uploadedFilePath', uploadData.filepath)
       localStorage.setItem('uploadedFileName', uploadData.originalName)
-      localStorage.setItem('analysisId', uploadData.analysisId) // Store analysis ID
+      localStorage.setItem('analysisId', uploadData.analysisId)
+      if (uploadData.originalImagePath) {
+        localStorage.setItem('originalImagePath', uploadData.originalImagePath)
+      }
       
-      // Navigate to questionnaire
       router.push("/intake")
       
     } catch (error) {

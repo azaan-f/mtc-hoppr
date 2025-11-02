@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" })
 
 export const metadata: Metadata = {
-  title: "Hoppr AI - AI-Powered Radiology Analysis",
+  title: "clario - AI-Powered Radiology Analysis",
   description: "Transform complex medical imaging into clear, easy-to-understand reports with AI-powered analysis",
   generator: "v0.app",
 }

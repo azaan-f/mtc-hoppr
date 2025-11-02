@@ -1,4 +1,3 @@
-# pipeline.py
 import argparse
 import asyncio
 from typing import Optional
@@ -51,16 +50,13 @@ async def run_model(hoppr, study_id, model_id, prompt):
                 response_format="json",
             )
 
-    # run the blocking call in a thread
     response = await asyncio.to_thread(call_model)
     
-    # Check if response is None or invalid
     if response is None:
         print(f"Warning: No response received for model {model_id}")
         if model_id == "cxr-vlm-experimental":
             return {"vlm_output": "Model response unavailable"}
         else:
-            # Return a default negative result
             return {model_id: {"score": 0.0, "positive": False}}
     
     if not hasattr(response, 'response') or response.response is None:
@@ -68,14 +64,12 @@ async def run_model(hoppr, study_id, model_id, prompt):
         if model_id == "cxr-vlm-experimental":
             return {"vlm_output": "Model response format invalid"}
         else:
-            # Return a default negative result
             return {model_id: {"score": 0.0, "positive": False}}
     
     payload = response.response
 
     if model_id == "cxr-vlm-experimental":
         findings = payload.get("findings") or payload.get("response") or str(payload)
-        # Clean any Unicode characters from VLM output
         findings = findings.encode('ascii', errors='replace').decode('ascii')
         return {"vlm_output": findings}
 
@@ -86,7 +80,6 @@ async def run_model(hoppr, study_id, model_id, prompt):
     except (KeyError, ValueError, TypeError) as e:
         print(f"Warning: Failed to parse payload for model {model_id}: {e}")
         print(f"Payload: {payload}")
-        # Return a default negative result
         return {model_id: {"score": 0.0, "positive": False}}
 
 
@@ -103,7 +96,6 @@ async def run_tier(hoppr, study_id, model_ids):
     for i, item in enumerate(results):
         if isinstance(item, Exception):
             print(f"Model {model_ids[i]} failed with error: {item}")
-            # Add a default negative result for failed models
             classification[model_ids[i]] = {"score": 0.0, "positive": False}
         elif item and isinstance(item, dict):
             classification.update(item)
@@ -111,7 +103,6 @@ async def run_tier(hoppr, study_id, model_ids):
 
 
 async def analyse_study(hoppr, study_id, tiers, vlm_prompt):
-    # VLM first
     vlm_result = await run_model(hoppr, study_id, "cxr-vlm-experimental", vlm_prompt)
     vlm_output = vlm_result["vlm_output"]
 
@@ -186,7 +177,6 @@ def format_analysis_results(classification, vlm_output):
     ])
     output = "\n".join(lines)
     
-    # Clean any Unicode characters that might cause encoding issues
     output = output.encode('ascii', errors='replace').decode('ascii')
     
     return output
@@ -209,7 +199,6 @@ def run_pipeline(
     image = hoppr.add_study_image(study.id, "image-001", image_data)
     print(f"Added image: {image.id}")
 
-    # tiers
     tier1 = [
         "mc_chestradiography_pneumothorax:v1.20250828",
         "mc_chestradiography_pleural_effusion:v1.20250828",
@@ -268,9 +257,6 @@ def main():
     import sys
     import io
     
-    # Set stdout to use UTF-8 encoding
-    # if sys.platform == 'win32':
-    #     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     
     parser = argparse.ArgumentParser(
         description="Run Hoppr models on a DICOM file with tiered inference."

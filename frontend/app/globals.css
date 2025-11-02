@@ -4,25 +4,24 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Updated to pure white background with purple accents */
-  --background: 0 0% 100%; /* Pure white background */
-  --foreground: 260 60% 25%; /* Deep purple for text */
-  --card: 0 0% 100%; /* White cards */
+  --background: 0 0% 100%;
+  --foreground: 260 60% 25%;
+  --card: 0 0% 100%;
   --card-foreground: 260 60% 25%;
   --popover: 0 0% 100%;
   --popover-foreground: 260 60% 25%;
-  --primary: 270 80% 60%; /* Bright purple/magenta accent */
+  --primary: 270 80% 60%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 270 60% 80%; /* Light purple for secondary elements */
+  --secondary: 270 60% 80%;
   --secondary-foreground: 260 60% 25%;
-  --muted: 240 10% 96%; /* Very light gray for muted elements */
+  --muted: 240 10% 96%;
   --muted-foreground: 260 30% 45%;
   --accent: 270 80% 60%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --border: 240 15% 90%; /* Light gray borders */
-  --input: 240 15% 95%; /* Light gray inputs */
+  --border: 240 15% 90%;
+  --input: 240 15% 95%;
   --ring: 270 80% 60%;
   --chart-1: 270 80% 60%;
   --chart-2: 270 60% 80%;
@@ -41,14 +40,13 @@
 }
 
 .dark {
-  /* Dark mode with HOPPR purple theme */
-  --background: 260 50% 12%; /* Dark navy/purple background */
+  --background: 260 50% 12%;
   --foreground: 0 0% 98%;
   --card: 260 40% 18%;
   --card-foreground: 0 0% 98%;
   --popover: 260 40% 18%;
   --popover-foreground: 0 0% 98%;
-  --primary: 270 80% 55%; /* Bright purple/magenta */
+  --primary: 270 80% 55%;
   --primary-foreground: 0 0% 100%;
   --secondary: 260 50% 35%;
   --secondary-foreground: 0 0% 100%;
@@ -123,5 +121,54 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  @keyframes spin-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  @keyframes spin-reverse {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(-360deg);
+    }
+  }
+  
+  @keyframes scan-line {
+    0% {
+      top: 0%;
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 1;
+    }
+    100% {
+      top: 100%;
+      opacity: 0;
+    }
+  }
+  
+  .animate-spin-slow {
+    animation: spin-slow 20s linear infinite;
+  }
+  
+  .animate-spin-reverse {
+    animation: spin-reverse 15s linear infinite;
+  }
+  
+  .animate-scan-line {
+    animation: scan-line 3s ease-in-out infinite;
   }
 }

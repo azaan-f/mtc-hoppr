@@ -96,8 +96,8 @@ export default function IntakePage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    // Only submit if we're on the last step AND it's an explicit submit action
-    // This prevents auto-submission when just navigating to step 3
+
+
   }
 
   const formatQuestionnaireData = () => {
@@ -164,27 +164,24 @@ Patient is a ${data.personalInformation.gender} presenting with ${data.currentSy
       setIsSubmitting(true)
       
       try {
-        // Get structured data
+
         const structuredData = formatQuestionnaireData()
         const chatGPTFormat = formatForChatGPT()
-        
-        // Store questionnaire data
+
         localStorage.setItem('questionnaireData', JSON.stringify(structuredData))
         localStorage.setItem('questionnaireFormatted', chatGPTFormat)
-        
-        // Get analysis ID to check pipeline status
+
         const analysisId = localStorage.getItem('analysisId')
         const uploadedFilePath = localStorage.getItem('uploadedFilePath')
         
         if (analysisId && uploadedFilePath) {
           console.log("Checking pipeline status for analysis:", analysisId)
-          
-          // Navigate to results page which will handle the processing screen
+
           router.push("/results")
           
         } else {
           console.warn('No analysis ID or uploaded file found')
-          // Still navigate to results but without analysis
+
           router.push("/results")
         }
         

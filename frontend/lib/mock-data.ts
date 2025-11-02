@@ -1,4 +1,4 @@
-// Mock data for demo purposes - no database needed
+
 
 export const mockResults = {
   "demo-scan-1": {

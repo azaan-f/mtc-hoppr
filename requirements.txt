@@ -1,0 +1,10 @@
+# Core dependencies for medical imaging analysis API
+openai>=2.6.0
+flask>=3.1.0
+flask-cors>=6.0.0
+hopprai>=0.0.4
+python-dotenv>=1.0.0
+pydicom>=2.4.0
+Pillow>=10.0.0
+numpy>=1.24.0
+

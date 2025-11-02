@@ -12,7 +12,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No analysis ID provided" }, { status: 400 })
     }
 
-    // Check status file
     const statusFile = join(process.cwd(), '..', 'temp', `${analysisId}_status.json`)
     
     if (!existsSync(statusFile)) {
@@ -23,7 +22,6 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Read status
     const statusData = await readFile(statusFile, 'utf-8')
     const status = JSON.parse(statusData)
 

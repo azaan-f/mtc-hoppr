@@ -1,4 +1,4 @@
-// Utility functions for handling questionnaire data
+
 
 export interface QuestionnaireData {
   personalInformation: {
@@ -21,9 +21,7 @@ export interface QuestionnaireData {
   currentSymptoms: string[]
 }
 
-/**
- * Get structured questionnaire data from localStorage
- */
+
 export const getQuestionnaireData = (): QuestionnaireData | null => {
   if (typeof window === 'undefined') return null
   
@@ -31,18 +29,14 @@ export const getQuestionnaireData = (): QuestionnaireData | null => {
   return storedData ? JSON.parse(storedData) : null
 }
 
-/**
- * Get formatted questionnaire data for ChatGPT
- */
+
 export const getFormattedQuestionnaireData = (): string => {
   if (typeof window === 'undefined') return ""
   
   return localStorage.getItem('questionnaireFormatted') || ""
 }
 
-/**
- * Generate ChatGPT context string from questionnaire data
- */
+
 export const generateChatGPTContext = (data?: QuestionnaireData): string => {
   const questionnaireData = data || getQuestionnaireData()
   
@@ -79,9 +73,7 @@ Patient is a ${questionnaireData.personalInformation.gender} presenting with ${q
   return formattedString
 }
 
-/**
- * Clear questionnaire data from localStorage
- */
+
 export const clearQuestionnaireData = (): void => {
   if (typeof window === 'undefined') return
   
@@ -89,9 +81,7 @@ export const clearQuestionnaireData = (): void => {
   localStorage.removeItem('questionnaireFormatted')
 }
 
-/**
- * Save questionnaire data to localStorage
- */
+
 export const saveQuestionnaireData = (data: QuestionnaireData): void => {
   if (typeof window === 'undefined') return
   

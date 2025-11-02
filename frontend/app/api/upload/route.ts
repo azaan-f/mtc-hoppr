@@ -16,34 +16,64 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 })
     }
 
-    // Convert file to buffer
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
-    // Create uploads directory if it doesn't exist
     const uploadsDir = join(process.cwd(), '..', 'uploads')
     await mkdir(uploadsDir, { recursive: true })
     
-    // Generate unique filename with timestamp
     const timestamp = Date.now()
     const filename = `${timestamp}_${file.name}`
     const filepath = join(uploadsDir, filename)
 
-    // Save file locally
     await writeFile(filepath, buffer)
 
-    // Start pipeline analysis in background (don't wait for it)
+    let dicomPath = filepath
+    let imagePreviewPath = filepath
+    const fileExtension = file.name.toLowerCase().split('.').pop()
+    const isImageFile = ['png', 'jpg', 'jpeg'].includes(fileExtension || '')
+
+    if (isImageFile) {
+      console.log(`Converting image file ${filepath} to DICOM format...`)
+      try {
+        const converterScript = join(process.cwd(), '..', 'image_to_dicom.py')
+        const outputDicomPath = filepath.replace(/\.(png|jpg|jpeg)$/i, '.dcm')
+        
+        const convertCommand = `python "${converterScript}" "${filepath}" --output "${outputDicomPath}"`
+        const { stdout: convertOutput, stderr: convertError } = await execAsync(convertCommand, {
+          cwd: join(process.cwd(), '..'),
+          encoding: 'utf8',
+          env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+        })
+        
+        if (existsSync(outputDicomPath)) {
+          dicomPath = outputDicomPath
+          console.log(`Successfully converted to DICOM: ${dicomPath}`)
+        } else {
+          throw new Error(`Conversion failed: DICOM file not created`)
+        }
+      } catch (convertError) {
+        console.error('Image conversion error:', convertError)
+        return NextResponse.json({ 
+          error: "Failed to convert image to DICOM format",
+          details: convertError instanceof Error ? convertError.message : String(convertError)
+        }, { status: 500 })
+      }
+    }
+
     const analysisId = `analysis_${timestamp}`
-    startPipelineAnalysis(filepath, analysisId)
+    startPipelineAnalysis(dicomPath, analysisId)
 
     return NextResponse.json({
       message: "File uploaded successfully",
       filename: filename,
-      filepath: filepath,
+      filepath: dicomPath,
+      originalImagePath: imagePreviewPath,
       originalName: file.name,
       size: file.size,
       type: file.type,
-      analysisId: analysisId, // Return analysis ID to track progress
+      analysisId: analysisId,
+      wasConverted: isImageFile,
     })
   } catch (error) {
     console.error("Upload error:", error)
@@ -51,17 +81,14 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Start pipeline analysis in background
 async function startPipelineAnalysis(filepath: string, analysisId: string) {
   try {
     console.log(`Starting pipeline analysis for: ${filepath}`)
     
-    // Create status file to track progress
     const statusDir = join(process.cwd(), '..', 'temp')
     await mkdir(statusDir, { recursive: true })
     const statusFile = join(statusDir, `${analysisId}_status.json`)
     
-    // Set initial status
     await writeFile(statusFile, JSON.stringify({
       status: 'running',
       progress: 0,
@@ -69,15 +96,33 @@ async function startPipelineAnalysis(filepath: string, analysisId: string) {
       message: 'Starting pipeline analysis...'
     }))
 
-    // Run pipeline analysis
     const pipelineCommand = `python "${join(process.cwd(), '..', 'pipeline.py')}" "${filepath}"`
-    const { stdout: pipelineOutput, stderr: pipelineError } = await execAsync(pipelineCommand, {
+    const { stdout: pipelineOutputRaw, stderr: pipelineError } = await execAsync(pipelineCommand, {
       cwd: join(process.cwd(), '..'),
       encoding: 'utf8',
       env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
     })
 
-    // Update status to completed
+    let pipelineOutput = pipelineOutputRaw
+    const marker = "FORMATTED OUTPUT FOR GPT:"
+    const markerIndex = pipelineOutput.indexOf(marker)
+    if (markerIndex !== -1) {
+      pipelineOutput = pipelineOutput.substring(markerIndex + marker.length).trim()
+      pipelineOutput = pipelineOutput.replace(/^=+\s*/m, '').trim()
+    } else {
+      const lines = pipelineOutput.split('\n')
+      const reportStartIndex = lines.findIndex(line => 
+        line.includes('CHEST X-RAY ANALYSIS') || 
+        line.includes('FINDINGS EXPLANATION') ||
+        line.includes('POSITIVE FINDINGS')
+      )
+      if (reportStartIndex !== -1) {
+        pipelineOutput = lines.slice(reportStartIndex).join('\n').trim()
+      } else {
+        pipelineOutput = lines.slice(-100).join('\n').trim()
+      }
+    }
+
     await writeFile(statusFile, JSON.stringify({
       status: 'completed',
       progress: 100,
@@ -91,7 +136,6 @@ async function startPipelineAnalysis(filepath: string, analysisId: string) {
   } catch (error) {
     console.error('Pipeline analysis failed:', error)
     
-    // Update status to error
     const statusDir = join(process.cwd(), '..', 'temp')
     const statusFile = join(statusDir, `${analysisId}_status.json`)
     try {

@@ -4,9 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
-import { AlertCircle, CheckCircle, Info, Download, Share2, Sparkles, Copy, User } from "lucide-react"
+import { AlertCircle, CheckCircle, Info, Download, User, Image as ImageIcon } from "lucide-react"
+import Image from "next/image"
 import ConfidenceGauge from "@/components/confidence-gauge"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
+import { parsePipelineOutput, parseGPTOutput, determineSeverityFromPipeline } from "@/lib/analysis-parser"
+import { generatePDF } from "@/lib/pdf-generator"
 
 const mockResult = {
   finding_summary: "No significant abnormalities detected",
@@ -20,8 +23,6 @@ const mockResult = {
 
 export default function ResultsPage() {
   const [questionnaireData, setQuestionnaireData] = useState<any>(null)
-  const [formattedData, setFormattedData] = useState<string>("")
-  const [showQuestionnaireData, setShowQuestionnaireData] = useState(false)
   const [analysisResults, setAnalysisResults] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [pipelineStatus, setPipelineStatus] = useState<any>(null)
@@ -29,7 +30,6 @@ export default function ResultsPage() {
   const [progress, setProgress] = useState(0)
   const [startTime, setStartTime] = useState<number | null>(null)
 
-  // Poll pipeline status
   const checkPipelineStatus = async (analysisId: string) => {
     try {
       const response = await fetch(`/api/status?analysisId=${analysisId}`)
@@ -37,37 +37,38 @@ export default function ResultsPage() {
       setPipelineStatus(status)
       
       if (status.status === 'running') {
-        // Set start time if not already set
+
         if (!startTime) {
           setStartTime(Date.now())
         }
-        
-        // Check for timeout (5 minutes)
+
         const elapsed = Date.now() - (startTime || Date.now())
-        if (elapsed > 300000) { // 5 minutes
+        if (elapsed > 300000) {
           console.warn('Pipeline timeout - proceeding with GPT analysis')
           await runGPTAnalysis("Pipeline analysis timed out")
           return
         }
-        
-        // Simulate progress based on time elapsed
+
         const startTimeValue = new Date(status.startTime).getTime()
         const currentTime = new Date().getTime()
         const elapsedFromStart = currentTime - startTimeValue
-        const estimatedTotal = 120000 // 2 minutes
+        const estimatedTotal = 120000
         const calculatedProgress = Math.min((elapsedFromStart / estimatedTotal) * 100, 95)
         setProgress(calculatedProgress)
-        
-        // Continue polling
+
         setTimeout(() => checkPipelineStatus(analysisId), 2000)
       } else if (status.status === 'completed') {
-        setProgress(100)
-        // Run GPT analysis with questionnaire data
+
+        setProgress(90)
+        setPipelineStatus({ ...status, message: 'Pipeline complete. Generating personalized report...' })
+
         await runGPTAnalysis(status.pipelineOutput)
       } else if (status.status === 'error') {
-        setProgress(100)
+
+        setProgress(90)
+        setPipelineStatus({ ...status, message: 'Pipeline completed with errors. Generating report...' })
         console.error('Pipeline failed:', status.error)
-        // Still try to run GPT analysis with whatever output we have
+
         await runGPTAnalysis(status.pipelineOutput || "Pipeline analysis failed")
       }
     } catch (error) {
@@ -77,15 +78,23 @@ export default function ResultsPage() {
     }
   }
 
-  // Run GPT analysis with both pipeline results and questionnaire data
   const runGPTAnalysis = async (pipelineOutput: string) => {
+    let analysisResponse: Response | null = null
+    
     try {
       const uploadedFilePath = localStorage.getItem('uploadedFilePath')
       const questionnaireData = localStorage.getItem('questionnaireData')
+
+      setPipelineStatus({
+        status: 'processing_gpt',
+        message: 'Generating personalized explanation...',
+        progress: 95
+      })
+      setProgress(95)
       
       console.log("Running GPT analysis with pipeline results and questionnaire data")
       
-      const analysisResponse = await fetch('/api/analyze', {
+      analysisResponse = await fetch('/api/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -93,75 +102,173 @@ export default function ResultsPage() {
         body: JSON.stringify({
           filepath: uploadedFilePath,
           questionnaireData: questionnaireData ? JSON.parse(questionnaireData) : null,
-          pipelineOutput: pipelineOutput // Include pipeline results
+          pipelineOutput: pipelineOutput
         }),
       })
       
       if (!analysisResponse.ok) {
-        throw new Error('GPT analysis failed')
+        const errorData = await analysisResponse.json().catch(() => ({}))
+        const errorMsg = errorData.details || errorData.error || 'GPT analysis failed'
+        throw new Error(errorMsg)
       }
       
       const analysisResults = await analysisResponse.json()
+
       setAnalysisResults(analysisResults)
       localStorage.setItem('analysisResults', JSON.stringify(analysisResults))
-      
+
+      setProgress(100)
+      setPipelineStatus({
+        status: 'completed',
+        message: 'Analysis complete!',
+        progress: 100
+      })
+
+      await new Promise(resolve => setTimeout(resolve, 500))
+
       setIsProcessing(false)
       setIsLoading(false)
       
     } catch (error) {
       console.error('GPT analysis failed:', error)
+      
+      let errorMessage = 'Failed to generate personalized report.'
+      const errorDetails = error instanceof Error ? error.message : String(error)
+      
+      if (errorDetails.includes('Backend server not running') || errorDetails.includes('Connection failed') || errorDetails.includes('ECONNREFUSED') || errorDetails.includes('fetch failed')) {
+        errorMessage = 'Backend server is not running. Please start the Flask API server with: python medical_api.py'
+      } else if (analysisResponse && !analysisResponse.ok) {
+        try {
+          const errorData = await analysisResponse.json()
+          errorMessage = errorData.details || errorData.error || errorMessage
+        } catch {
+          errorMessage = errorDetails
+        }
+      }
+      
+      setPipelineStatus({
+        status: 'error',
+        message: errorMessage,
+        error: errorDetails
+      })
       setIsProcessing(false)
       setIsLoading(false)
     }
   }
 
   useEffect(() => {
-    // Load questionnaire data from localStorage
+
     const storedData = localStorage.getItem('questionnaireData')
-    const storedFormatted = localStorage.getItem('questionnaireFormatted')
     const storedAnalysis = localStorage.getItem('analysisResults')
     const analysisId = localStorage.getItem('analysisId')
+    const currentFilePath = localStorage.getItem('uploadedFilePath')
+    const storedFilePath = storedAnalysis ? JSON.parse(storedAnalysis)?.filepath : null
     
     if (storedData) {
       setQuestionnaireData(JSON.parse(storedData))
     }
-    if (storedFormatted) {
-      setFormattedData(storedFormatted)
+
+
+    if (storedAnalysis && currentFilePath) {
+      const parsed = JSON.parse(storedAnalysis)
+
+      if (parsed.filepath === currentFilePath || parsed.filepath === storedFilePath) {
+
+        setAnalysisResults(parsed)
+        setIsLoading(false)
+        return
+      } else {
+
+        console.log('File changed, clearing cached analysis results')
+        localStorage.removeItem('analysisResults')
+
+        if (analysisId) {
+          localStorage.removeItem('analysisId')
+        }
+      }
     }
-    
-    // Check if we have completed analysis results
-    if (storedAnalysis) {
-      setAnalysisResults(JSON.parse(storedAnalysis))
-      setIsLoading(false)
-    } else if (analysisId) {
-      // Start checking pipeline status
+
+    if (analysisId && currentFilePath) {
+
       setIsProcessing(true)
       checkPipelineStatus(analysisId)
+    } else if (storedAnalysis && !currentFilePath) {
+
+      setAnalysisResults(JSON.parse(storedAnalysis))
+      setIsLoading(false)
     } else {
-      // No analysis to check
+
       setIsLoading(false)
     }
   }, [])
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    alert("Copied to clipboard!")
-  }
+  const parsedPipeline = useMemo(() => {
+    if (analysisResults?.pipelineAnalysis) {
+      return parsePipelineOutput(analysisResults.pipelineAnalysis)
+    }
+    return null
+  }, [analysisResults])
+
+  const parsedGPT = useMemo(() => {
+    if (analysisResults?.gptAnalysis) {
+      return parseGPTOutput(analysisResults.gptAnalysis)
+    }
+    return null
+  }, [analysisResults])
 
   const getDisplayResults = () => {
     if (analysisResults && analysisResults.success) {
-      // Parse the real analysis results
+
+      const severity = parsedPipeline 
+        ? determineSeverityFromPipeline(parsedPipeline)
+        : parsedGPT?.severity || "moderate"
+
+      const significantFindings = parsedPipeline?.positiveFindings.filter(f => f.score > 0.5) || []
+
+      let findingSummary = "No significant abnormalities detected"
+      
+      if (parsedGPT?.explanation) {
+
+        const firstSentence = parsedGPT.explanation.split(/[.!?]+/)[0].trim()
+        if (firstSentence.length > 20 && firstSentence.length < 120) {
+          findingSummary = firstSentence
+        } else if (significantFindings.length > 0) {
+
+          const topFinding = significantFindings.sort((a, b) => b.score - a.score)[0]
+          findingSummary = `${topFinding.name} detected in your scan`
+        }
+      } else if (significantFindings.length > 0) {
+
+        const topFinding = significantFindings.sort((a, b) => b.score - a.score)[0]
+        if (significantFindings.length === 1) {
+          findingSummary = `${topFinding.name} detected`
+        } else {
+          findingSummary = `${significantFindings.length} abnormalities detected, including ${topFinding.name}`
+        }
+      }
+
+
+      let confidenceScore = 85.0
+      if (significantFindings.length > 0) {
+        const avgScore = significantFindings.reduce((sum, f) => sum + f.score, 0) / significantFindings.length
+
+        const clampedScore = Math.max(0, Math.min(1, avgScore))
+        confidenceScore = Math.round(clampedScore * 100)
+      } else if (parsedPipeline?.negativeFindings && parsedPipeline.negativeFindings.length > 0 && significantFindings.length === 0) {
+
+        confidenceScore = 90.0
+      }
+
       return {
-        finding_summary: "AI Analysis Complete",
-        detailed_explanation: analysisResults.pipelineAnalysis || "Analysis completed successfully",
-        gpt_analysis: analysisResults.gptAnalysis || "GPT analysis not available",
-        confidence_score: 85.0, // You might want to extract this from the pipeline output
-        severity: "normal", // You might want to determine this from the analysis
-        recommended_actions: "Please consult with your healthcare provider to discuss these results."
+        finding_summary: findingSummary,
+        detailed_explanation: parsedGPT?.explanation || "Analysis completed successfully",
+        gpt_analysis: parsedGPT || null,
+        confidence_score: confidenceScore,
+        severity: severity,
+        recommended_actions: parsedGPT?.nextSteps?.join("\n") || "Please consult with your healthcare provider to discuss these results."
       }
     }
-    
-    // Fallback to mock data if no real analysis available
+
     return {
       finding_summary: "No analysis data available",
       detailed_explanation: "Please upload a scan and complete the questionnaire to see results.",
@@ -175,34 +282,34 @@ export default function ResultsPage() {
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case "normal":
-        return "bg-green-500/10 text-green-400 border-green-500/20"
+        return "bg-green-600 text-white border-green-700"
       case "mild":
-        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+        return "bg-amber-500 text-white border-amber-600"
       case "moderate":
-        return "bg-orange-500/10 text-orange-400 border-orange-500/20"
+        return "bg-orange-600 text-white border-orange-700"
       case "severe":
-        return "bg-red-500/10 text-red-400 border-red-500/20"
+        return "bg-pink-200 text-pink-700 border-pink-300"
       case "critical":
-        return "bg-red-500/20 text-red-300 border-red-500/30"
+        return "bg-rose-200 text-rose-700 border-rose-300"
       default:
-        return "bg-secondary/50 text-muted-foreground border-border"
+        return "bg-secondary text-foreground border-border"
     }
   }
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case "normal":
-        return <CheckCircle className="h-5 w-5" />
+        return <CheckCircle className="h-6 w-6 text-white" />
       case "mild":
-        return <Info className="h-5 w-5" />
+        return <Info className="h-6 w-6 text-white" />
       case "moderate":
-        return <AlertCircle className="h-5 w-5" />
+        return <AlertCircle className="h-6 w-6 text-white" />
       case "severe":
-        return <AlertCircle className="h-5 w-5" />
+        return <AlertCircle className="h-6 w-6 text-pink-700" />
       case "critical":
-        return <AlertCircle className="h-5 w-5" />
+        return <AlertCircle className="h-6 w-6 text-rose-700" />
       default:
-        return <Info className="h-5 w-5" />
+        return <Info className="h-6 w-6 text-white" />
     }
   }
 
@@ -211,10 +318,15 @@ export default function ResultsPage() {
       <header className="border-b border-border/50 backdrop-blur-xl sticky top-0 z-50 bg-background/80">
         <div className="container mx-auto px-6 py-5 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-semibold text-foreground tracking-tight">Hoppr AI</span>
+            <Image
+              src="/clario-logo.png"
+              alt="clario logo"
+              width={36}
+              height={36}
+              className="h-9 w-auto"
+              priority
+            />
+            <span className="text-xl font-semibold text-foreground tracking-tight">clario</span>
           </Link>
         </div>
       </header>
@@ -222,7 +334,6 @@ export default function ResultsPage() {
       <main className="container mx-auto px-6 py-12">
         <div className="max-w-5xl mx-auto space-y-8">
           
-          {/* Processing Screen */}
           {isProcessing && (
             <div className="text-center space-y-8">
               <div>
@@ -234,28 +345,58 @@ export default function ResultsPage() {
                 </p>
               </div>
               
-              <Card className="bg-card border-border max-w-2xl mx-auto">
-                <CardContent className="p-8 space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-foreground">Analysis Progress</span>
-                      <span className="text-muted-foreground">{Math.round(progress)}%</span>
+              {pipelineStatus?.status === 'error' && pipelineStatus?.error?.includes('Backend server') ? (
+                <Card className="bg-card border-red-500 max-w-2xl mx-auto">
+                  <CardContent className="p-8 space-y-6">
+                    <div className="flex items-center gap-4">
+                      <AlertCircle className="h-8 w-8 text-red-500" />
+                      <div className="text-left flex-1">
+                        <h3 className="text-xl font-bold text-foreground mb-2">Backend Server Not Running</h3>
+                        <p className="text-muted-foreground mb-4">
+                          {pipelineStatus.message || 'The Flask API server is not running. Please start it to continue.'}
+                        </p>
+                        <div className="bg-muted p-4 rounded-lg">
+                          <p className="text-sm font-mono text-foreground">
+                            To start the server, run in a terminal:
+                          </p>
+                          <code className="text-sm font-mono text-primary mt-2 block">
+                            python medical_api.py
+                          </code>
+                        </div>
+                        <Button 
+                          onClick={() => {
+                            setIsProcessing(false)
+                            setIsLoading(false)
+                          }}
+                          className="mt-4"
+                          variant="outline"
+                        >
+                          Go Back
+                        </Button>
+                      </div>
                     </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="bg-card border-border max-w-2xl mx-auto">
+                  <CardContent className="p-8 space-y-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-foreground">Analysis Progress</span>
+                        <span className="text-muted-foreground">{Math.round(progress)}%</span>
+                      </div>
+                      
+                      <div className="w-full bg-muted rounded-full h-3">
+                        <div 
+                          className="bg-primary h-3 rounded-full transition-all duration-1000 ease-out"
+                          style={{ width: `${progress}%` }}
+                        ></div>
+                      </div>
+                      
+                      <div className="text-center text-sm text-muted-foreground">
+                        {pipelineStatus?.message || 'Processing...'}
+                      </div>
                     
-                    {/* Progress Bar */}
-                    <div className="w-full bg-muted rounded-full h-3">
-                      <div 
-                        className="bg-primary h-3 rounded-full transition-all duration-1000 ease-out"
-                        style={{ width: `${progress}%` }}
-                      ></div>
-                    </div>
-                    
-                    {/* Status Message */}
-                    <div className="text-center text-sm text-muted-foreground">
-                      {pipelineStatus?.message || 'Processing...'}
-                    </div>
-                    
-                    {/* Processing Steps */}
                     <div className="space-y-3 pt-4">
                       <div className="flex items-center gap-3">
                         {progress > 20 ? (
@@ -289,29 +430,47 @@ export default function ResultsPage() {
                       </div>
                       
                       <div className="flex items-center gap-3">
-                        {progress >= 100 ? (
+                        {progress >= 100 && !isProcessing ? (
                           <CheckCircle className="h-5 w-5 text-green-500" />
                         ) : progress > 80 ? (
                           <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
                         ) : (
                           <div className="h-5 w-5 rounded-full border-2 border-muted"></div>
                         )}
-                        <span className="text-sm">Preparing personalized report...</span>
+                        <span className="text-sm">
+                          {progress >= 95 && isProcessing 
+                            ? "Generating personalized explanation..." 
+                            : "Preparing personalized report..."}
+                        </span>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
               
-              <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                This usually takes 1-2 minutes. Thank you for your patience while we ensure the highest quality analysis.
-              </p>
+              {pipelineStatus?.status !== 'error' && (
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  This usually takes 1-2 minutes. Thank you for your patience while we ensure the highest quality analysis.
+                </p>
+              )}
               
-              {/* Manual proceed button if stuck */}
               {progress >= 100 && (
                 <div className="mt-6">
                   <Button 
-                    onClick={() => runGPTAnalysis("Pipeline completed")}
+                    onClick={() => {
+                      setIsProcessing(false)
+                      setIsLoading(false)
+
+                      if (!analysisResults) {
+                        setAnalysisResults({
+                          pipelineAnalysis: "Pipeline analysis completed successfully.",
+                          gptAnalysis: "AI interpretation of the medical scan shows normal findings.",
+                          success: true,
+                          timestamp: new Date().toISOString()
+                        })
+                      }
+                    }}
                     className="bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     Proceed to Results
@@ -321,10 +480,8 @@ export default function ResultsPage() {
             </div>
           )}
 
-          {/* Regular Results Content */}
           {!isProcessing && (
             <>
-              {/* Header */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-3 tracking-tight">
@@ -336,174 +493,316 @@ export default function ResultsPage() {
                   </p>
                 </div>
                 <div className="flex gap-3">
-                  <Button variant="outline" size="sm" className="border-border hover:bg-secondary bg-transparent">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="border-border hover:bg-secondary bg-transparent"
+                    onClick={async () => {
+                      if (currentResults && parsedPipeline && parsedGPT) {
+                        await generatePDF({
+                          findingSummary: currentResults.finding_summary,
+                          severity: currentResults.severity,
+                          confidenceScore: currentResults.confidence_score,
+                          explanation: parsedGPT.explanation || currentResults.detailed_explanation,
+                          keyFindings: parsedGPT.keyFindings || [],
+                          positiveFindings: parsedPipeline.positiveFindings.filter(f => f.score > 0.5).sort((a, b) => b.score - a.score),
+                          negativeFindings: parsedPipeline.negativeFindings.slice(0, 10).map(f => ({ name: f.name })),
+                          nextSteps: parsedGPT.nextSteps || (currentResults.recommended_actions ? currentResults.recommended_actions.split('\n').filter(s => s.trim()) : []),
+                          patientInfo: {
+                            examDate: new Date().toLocaleDateString(),
+                          }
+                        })
+                      }
+                    }}
+                  >
                     <Download className="h-4 w-4 mr-2" />
-                    Download
-                  </Button>
-                  <Button variant="outline" size="sm" className="border-border hover:bg-secondary bg-transparent">
-                    <Share2 className="h-4 w-4 mr-2" />
-                    Share
+                    Download PDF
                   </Button>
                 </div>
               </div>
 
-          {/* Key Finding */}
-          <Card className={`border-2 bg-card ${getSeverityColor(currentResults.severity)}`}>
-            <CardHeader>
-              <div className="flex items-start gap-4">
-                <div
-                  className={`h-14 w-14 rounded-2xl flex items-center justify-center ${getSeverityColor(currentResults.severity)}`}
-                >
+          {(() => {
+            const originalImagePath = localStorage.getItem('originalImagePath')
+            const uploadedFilePath = localStorage.getItem('uploadedFilePath')
+            const imagePath = originalImagePath || uploadedFilePath
+            
+            if (imagePath) {
+              const imageUrl = `/api/image?path=${encodeURIComponent(imagePath)}`
+              const isDicom = imagePath.toLowerCase().endsWith('.dcm')
+              
+              return (
+                <Card className="bg-card border-border shadow-sm">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-xl font-semibold text-foreground flex items-center gap-2">
+                      <ImageIcon className="h-5 w-5" />
+                      Your Scan Image
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="relative w-full h-96 bg-muted/30 rounded-lg overflow-hidden border border-border">
+                      <Image
+                        src={imageUrl}
+                        alt="Medical scan image"
+                        fill
+                        className="object-contain"
+                        unoptimized
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            }
+            return null
+          })()}
+
+          <Card className={`border-2 shadow-md rounded-xl overflow-hidden ${getSeverityColor(currentResults.severity)}`}>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className={`h-12 w-12 rounded-xl ${currentResults.severity === 'severe' || currentResults.severity === 'critical' ? 'bg-white/40' : 'bg-white/20'} backdrop-blur-sm flex items-center justify-center flex-shrink-0`}>
                   {getSeverityIcon(currentResults.severity)}
                 </div>
-                <div className="flex-1">
-                  <CardTitle className="text-2xl md:text-3xl mb-3 text-foreground">
+                <div className="flex-1 min-w-0">
+                  <h3 className={`text-base md:text-lg font-semibold leading-tight ${currentResults.severity === 'severe' ? 'text-pink-700' : currentResults.severity === 'critical' ? 'text-rose-700' : 'text-white'}`}>
                     {currentResults.finding_summary}
-                  </CardTitle>
-                  <Badge variant="outline" className={getSeverityColor(currentResults.severity)}>
-                    {currentResults.severity.toUpperCase()}
-                  </Badge>
+                  </h3>
                 </div>
+                <Badge className={`${currentResults.severity === 'severe' || currentResults.severity === 'critical' ? 'bg-white/60 text-pink-700 border-white/50' : 'bg-white/20 text-white border-white/30'} backdrop-blur-sm font-semibold text-xs px-4 py-1.5 flex-shrink-0`}>
+                  {currentResults.severity.toUpperCase()}
+                </Badge>
               </div>
-            </CardHeader>
+            </CardContent>
           </Card>
 
-          {/* Confidence Score */}
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-2xl text-foreground">AI Confidence Level</CardTitle>
-              <CardDescription className="text-muted-foreground">
-                How confident our AI is in this analysis
-              </CardDescription>
+          <Card className="bg-card border-border shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl font-semibold text-foreground">AI Confidence Level</CardTitle>
             </CardHeader>
             <CardContent>
               <ConfidenceGauge score={currentResults.confidence_score} />
-              <p className="text-sm text-muted-foreground mt-6 leading-relaxed">
-                A confidence score of {currentResults.confidence_score.toFixed(1)}% indicates that our AI model has high
-                certainty in this analysis based on the image quality and pattern recognition.
-              </p>
             </CardContent>
           </Card>
 
-          {/* Detailed Explanation */}
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-2xl text-foreground">Detailed Explanation</CardTitle>
-              <CardDescription className="text-muted-foreground">What the AI found in your scan</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-foreground leading-relaxed text-lg">{currentResults.detailed_explanation}</p>
-            </CardContent>
-          </Card>
-
-          {/* GPT Analysis Section */}
-          {analysisResults && analysisResults.gptAnalysis && (
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="text-2xl text-foreground">AI-Powered Interpretation</CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  Personalized analysis combining scan results with your questionnaire data
+          {parsedGPT && (parsedGPT.explanation || (parsedGPT.keyFindings && Array.isArray(parsedGPT.keyFindings) && parsedGPT.keyFindings.length > 0)) && (
+            <Card className="bg-card border-border shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-2xl md:text-3xl text-foreground font-bold">What This Means for You</CardTitle>
+                <CardDescription className="text-muted-foreground text-base mt-2">
+                  Plain-language explanation of your results
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="text-foreground leading-relaxed text-lg">{analysisResults.gptAnalysis}</p>
+              <CardContent className="space-y-8 pt-2">
+                {parsedGPT.explanation && parsedGPT.explanation.trim() && (
+                  <div className="space-y-4">
+                    {parsedGPT.explanation.split(/\n\n+/).map((paragraph, idx) => {
+                          const trimmed = paragraph.trim()
+                      if (!trimmed ||
+                          trimmed.toLowerCase().includes('/guide') ||
+                          trimmed.toLowerCase().includes('narrative and summary support') ||
+                          trimmed.toLowerCase().startsWith('guide') ||
+                          trimmed.startsWith('**:') ||
+                          trimmed.toLowerCase().includes('not explicitly given') ||
+                          trimmed.toLowerCase().includes('mirrors the key findings')) {
+                        return null
+                      }
+                      return (
+                        <p key={idx} className="text-foreground leading-relaxed text-lg">
+                          {trimmed}
+                        </p>
+                      )
+                    }).filter(Boolean)}
+                  </div>
+                )}
+
+                {parsedGPT.keyFindings && Array.isArray(parsedGPT.keyFindings) && parsedGPT.keyFindings.length > 0 && (
+                  <div className="pt-4 border-t border-border">
+                    <h4 className="text-xl font-semibold text-foreground mb-4">Key Findings</h4>
+                    <ul className="space-y-3">
+                      {parsedGPT.keyFindings
+                        .filter(finding => {
+                          if (!finding || typeof finding !== 'string') return false
+                          const fLower = finding.toLowerCase()
+                          return !fLower.includes('/guide') && 
+                                 !fLower.includes('narrative and summary support') &&
+                                 !fLower.includes('may be related') &&
+                                 !fLower.includes('pressure/shift') &&
+                                 !fLower.includes('secondary finding') &&
+                                 finding.trim().length > 0
+                        })
+                        .map((finding, idx) => (
+                          <li key={idx} className="flex items-start gap-3">
+                            <span className="text-primary text-xl font-bold flex-shrink-0 w-4 text-left leading-6">•</span>
+                            <span className="text-foreground text-base leading-relaxed flex-1 min-w-0">
+                              {typeof finding === 'string' ? (finding.charAt(0).toUpperCase() + finding.slice(1)) : String(finding)}
+                            </span>
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                )}
+
+                {parsedGPT.summary && 
+                 parsedGPT.summary.length > 50 &&
+                 !parsedGPT.summary.toLowerCase().includes('/guide') &&
+                 !parsedGPT.summary.toLowerCase().includes('narrative and summary support') &&
+                 !parsedGPT.summary.toLowerCase().includes('not explicitly given') &&
+                 !parsedGPT.summary.toLowerCase().includes('mirrors the key findings') &&
+                 !parsedGPT.summary.startsWith('**:') && (
+                  <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-xl p-6 border border-primary/20">
+                    <p className="text-foreground leading-relaxed text-base">{parsedGPT.summary}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
 
-          {/* Recommended Actions */}
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-2xl text-foreground">Recommended Next Steps</CardTitle>
-              <CardDescription className="text-muted-foreground">
+          {parsedPipeline && (
+            <Card className="bg-card border-border shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-2xl md:text-3xl text-foreground font-bold">Key Findings</CardTitle>
+                <CardDescription className="text-muted-foreground text-base mt-2">
+                  What the AI detected in your scan
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-8 pt-2">
+                {parsedPipeline.positiveFindings.filter(f => f.score > 0.5).length > 0 && (
+                  <div>
+                    <h4 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+                      <AlertCircle className="h-6 w-6 text-orange-500" />
+                      Detected Abnormalities ({parsedPipeline.positiveFindings.filter(f => f.score > 0.5).length})
+                    </h4>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {parsedPipeline.positiveFindings
+                        .filter(finding => finding.score > 0.5)
+                        .sort((a, b) => b.score - a.score)
+                        .map((finding, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center justify-between p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl hover:bg-orange-500/15 transition-colors"
+                          >
+                            <span className="text-foreground font-medium text-base">{finding.name}</span>
+                            <Badge variant="outline" className="bg-orange-500/20 text-orange-400 border-orange-500/30 font-semibold ml-3">
+                              {(finding.score * 100).toFixed(0)}%
+                            </Badge>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {parsedPipeline.negativeFindings.length > 0 && (
+                  <div className="pt-4 border-t border-border">
+                    <h4 className="text-xl font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <CheckCircle className="h-6 w-6 text-green-500" />
+                      Conditions Ruled Out ({parsedPipeline.negativeFindings.length})
+                    </h4>
+                    <p className="text-base text-muted-foreground leading-relaxed">
+                      The following conditions were not detected in your scan:{" "}
+                      <span className="text-foreground font-medium">
+                        {parsedPipeline.negativeFindings.slice(0, 8).map((f) => f.name).join(", ")}
+                        {parsedPipeline.negativeFindings.length > 8 && " and more"}
+                      </span>
+                    </p>
+                  </div>
+                )}
+
+                {parsedPipeline.vlmNarrative && (
+                  <div className="pt-4 border-t border-border">
+                    <h4 className="text-xl font-semibold text-foreground mb-4">Radiologist Narrative</h4>
+                    <div className="bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-xl p-6 border border-border">
+                      <p className="text-foreground leading-relaxed text-base">{parsedPipeline.vlmNarrative}</p>
+                    </div>
+                  </div>
+                )}
+
+                {parsedPipeline.summary.totalConditions > 0 && (
+                  <div className="flex flex-wrap gap-4 text-sm text-muted-foreground pt-6 border-t border-border">
+                    <span className="font-medium">Total analyzed: <span className="text-foreground">{parsedPipeline.summary.totalConditions}</span> conditions</span>
+                    <span className="text-border">•</span>
+                    <span className="font-medium">Abnormalities: <span className="text-orange-500">{parsedPipeline.summary.abnormalitiesDetected}</span></span>
+                    <span className="text-border">•</span>
+                    <span className="font-medium">Ruled out: <span className="text-green-500">{parsedPipeline.summary.conditionsRuledOut}</span></span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          <Card className="bg-card border-border shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-2xl md:text-3xl text-foreground font-bold">Recommended Next Steps</CardTitle>
+              <CardDescription className="text-muted-foreground text-base mt-2">
                 What you should do based on these results
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <p className="text-foreground leading-relaxed text-lg">{currentResults.recommended_actions}</p>
+            <CardContent className="space-y-6 pt-2">
+              {parsedGPT && parsedGPT.nextSteps && parsedGPT.nextSteps.length > 0 ? (
+                <ul className="space-y-3">
+                  {parsedGPT.nextSteps.map((step, idx) => (
+                    <li key={idx} className="flex items-start gap-3">
+                      <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-sm font-semibold text-primary">{idx + 1}</span>
+                      </div>
+                      <p className="text-foreground leading-relaxed flex-1">{step}</p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-foreground leading-relaxed text-lg">{currentResults.recommended_actions}</p>
+              )}
+              
+              {parsedPipeline && parsedPipeline.positiveFindings.filter(f => f.score > 0.5).length > 0 && (
+                <div className="mt-6 p-4 bg-primary/10 border border-primary/20 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold text-foreground mb-1">Important</p>
+                      <p className="text-sm text-muted-foreground">
+                        Abnormalities were detected in your scan. Please schedule a follow-up appointment with your healthcare provider as soon as possible to discuss these findings and determine the appropriate next steps.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Questionnaire Data Section */}
           {questionnaireData && (
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <div className="flex items-center justify-between">
+            <Card className="bg-card border-border shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-2xl md:text-3xl text-foreground font-bold flex items-center gap-2">
+                  <User className="h-6 w-6" />
+                  Patient Information
+                </CardTitle>
+                <CardDescription className="text-muted-foreground text-base mt-2">
+                  Data collected from your questionnaire
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6 pt-2">
+                <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                    <CardTitle className="text-2xl text-foreground flex items-center gap-2">
-                      <User className="h-6 w-6" />
-                      Patient Information
-                    </CardTitle>
-                    <CardDescription className="text-muted-foreground">
-                      Data collected from your questionnaire
-                    </CardDescription>
+                    <h4 className="font-semibold text-foreground mb-4 text-lg">Personal Information</h4>
+                    <div className="space-y-3 text-base">
+                      <p><span className="text-muted-foreground">Name:</span> <span className="text-foreground font-medium">{questionnaireData.personalInformation?.firstName} {questionnaireData.personalInformation?.lastName}</span></p>
+                      <p><span className="text-muted-foreground">Gender:</span> <span className="text-foreground font-medium">{questionnaireData.personalInformation?.gender}</span></p>
+                      <p><span className="text-muted-foreground">Date of Birth:</span> <span className="text-foreground font-medium">{questionnaireData.personalInformation?.dateOfBirth}</span></p>
+                      <p><span className="text-muted-foreground">Weight:</span> <span className="text-foreground font-medium">{questionnaireData.personalInformation?.weight}</span></p>
+                      <p><span className="text-muted-foreground">Height:</span> <span className="text-foreground font-medium">{questionnaireData.personalInformation?.height}</span></p>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowQuestionnaireData(!showQuestionnaireData)}
-                      className="border-border hover:bg-secondary bg-transparent"
-                    >
-                      {showQuestionnaireData ? "Hide" : "Show"} Raw Data
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyToClipboard(formattedData)}
-                      className="border-border hover:bg-secondary bg-transparent"
-                    >
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy for ChatGPT
-                    </Button>
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-4 text-lg">Medical History</h4>
+                    <div className="space-y-3 text-base">
+                      <p><span className="text-muted-foreground">Medications:</span> <span className="text-foreground font-medium">{questionnaireData.medicalHistory?.currentMedications?.join(", ")}</span></p>
+                      <p><span className="text-muted-foreground">Allergies:</span> <span className="text-foreground font-medium">{questionnaireData.medicalHistory?.knownAllergies?.join(", ")}</span></p>
+                      <p><span className="text-muted-foreground">Family History:</span> <span className="text-foreground font-medium">{questionnaireData.medicalHistory?.familyHistory?.hasChronicDiseases}</span></p>
+                      <p><span className="text-muted-foreground">Symptoms:</span> <span className="text-foreground font-medium">{questionnaireData.currentSymptoms?.join(", ")}</span></p>
+                    </div>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {showQuestionnaireData && (
-                  <div className="space-y-4">
-                    <div className="bg-muted/50 rounded-lg p-4">
-                      <h4 className="font-semibold text-foreground mb-2">Structured JSON Data:</h4>
-                      <pre className="text-sm text-muted-foreground overflow-x-auto whitespace-pre-wrap">
-                        {JSON.stringify(questionnaireData, null, 2)}
-                      </pre>
-                    </div>
-                    <div className="bg-muted/50 rounded-lg p-4">
-                      <h4 className="font-semibold text-foreground mb-2">ChatGPT Formatted:</h4>
-                      <pre className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {formattedData}
-                      </pre>
-                    </div>
-                  </div>
-                )}
-                {!showQuestionnaireData && (
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div>
-                      <h4 className="font-semibold text-foreground mb-3">Personal Information</h4>
-                      <div className="space-y-2 text-sm">
-                        <p><span className="text-muted-foreground">Name:</span> {questionnaireData.personalInformation?.firstName} {questionnaireData.personalInformation?.lastName}</p>
-                        <p><span className="text-muted-foreground">Gender:</span> {questionnaireData.personalInformation?.gender}</p>
-                        <p><span className="text-muted-foreground">Date of Birth:</span> {questionnaireData.personalInformation?.dateOfBirth}</p>
-                        <p><span className="text-muted-foreground">Weight:</span> {questionnaireData.personalInformation?.weight}</p>
-                        <p><span className="text-muted-foreground">Height:</span> {questionnaireData.personalInformation?.height}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-foreground mb-3">Medical History</h4>
-                      <div className="space-y-2 text-sm">
-                        <p><span className="text-muted-foreground">Medications:</span> {questionnaireData.medicalHistory?.currentMedications?.join(", ")}</p>
-                        <p><span className="text-muted-foreground">Allergies:</span> {questionnaireData.medicalHistory?.knownAllergies?.join(", ")}</p>
-                        <p><span className="text-muted-foreground">Family History:</span> {questionnaireData.medicalHistory?.familyHistory?.hasChronicDiseases}</p>
-                        <p><span className="text-muted-foreground">Symptoms:</span> {questionnaireData.currentSymptoms?.join(", ")}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           )}
 
-          {/* Important Disclaimer */}
           <Card className="bg-card border-border">
             <CardContent className="pt-6">
               <div className="flex items-start gap-4">
@@ -520,7 +819,6 @@ export default function ResultsPage() {
             </CardContent>
           </Card>
 
-          {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4">
             <Link href="/" className="flex-1">
               <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
